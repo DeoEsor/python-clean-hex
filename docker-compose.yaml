@@ -1,0 +1,139 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: stock_service
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  migrations:
+    image: ghcr.io/kukymbr/goose-docker:3.22.1
+    environment:
+      - GOOSE_DRIVER=postgres
+      - GOOSE_DBSTRING=host=postgres port=5432 user=postgres password=postgres dbname=postgres
+    volumes:
+      - ./migrations:/migrations
+    depends_on:
+      - postgres
+
+  zookeeper:
+    image: wurstmeister/zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: wurstmeister/kafka:2.12-2.2.1
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: >-
+        LISTENER_DOCKER_INTERNAL://kafka:29092,
+        LISTENER_DOCKER_EXTERNAL://localhost:9092
+
+      KAFKA_LISTENERS: >-
+        LISTENER_DOCKER_INTERNAL://:29092,
+        LISTENER_DOCKER_EXTERNAL://:9092
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: >-
+        LISTENER_DOCKER_INTERNAL:PLAINTEXT,
+        LISTENER_DOCKER_EXTERNAL:PLAINTEXT
+
+      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG4J_LOGGERS: >-
+        kafka.controller=INFO,
+        kafka.producer.async.DefaultEventHandler=INFO,
+        state.change.logger=INFO
+      KAFKA_CREATE_TOPICS: "model_run.az_scheduler.schedule_changed:1:1,model_run.handler.model_run_changed:1:1"
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    depends_on:
+      - kafka
+    ports:
+      - "8301:8080"
+    restart: always
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
+
+
+  redis:
+   image: redis:latest
+   container_name: redis
+   restart: always
+   ports:
+     - "6379:6379"
+   environment:
+     - REDIS_PASSWORD=redispassword
+     - REDIS_PORT=6379
+     - REDIS_DATABASES=2
+
+  minio:
+   image: quay.io/minio/minio
+   command: server /data --console-address ":9090"
+   restart: always
+   ports:
+     - "9000:9000"
+   environment:
+     - MINIO_ROOT_USER=minio
+     - MINIO_ROOT_PASSWORD=miniopassword
+
+
+  temporal:
+    image: temporalio/auto-setup:1.22.0
+    ports:
+      - "7233:7233"
+    environment:
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development.yaml
+    volumes:
+      - temporal_data:/var/lib/temporal
+
+  temporal-admin-tools:
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    image: temporalio/admin-tools:1.25.2-tctl-1.18.1-cli-1.1.1
+    stdin_open: true
+    tty: true
+
+  temporal-ui:
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    image: temporalio/ui:2.26.2
+    ports:
+      - "8080:8080"
+
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/stock_service
+      - TEMPORAL_HOST=temporal:7233
+    depends_on:
+      - postgres
+      - temporal
+
+volumes:
+  postgres_data:
+  temporal_data:

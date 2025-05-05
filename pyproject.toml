@@ -1,0 +1,30 @@
+[project]
+name = "python-hex-clean-arch"
+version = "0.1.0"
+description = "Stock ownership control service with clean architecture"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.109.0",
+    "uvicorn>=0.27.0",
+    "pydantic>=2.6.0",
+    "sqlalchemy>=2.0.0",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.0",
+    "kink>=0.7.0",
+    "snaql>=0.1.0",
+    "temporalio>=1.4.0",
+    "python-dotenv>=1.0.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "httpx>=0.26.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
