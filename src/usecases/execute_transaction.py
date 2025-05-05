@@ -5,17 +5,17 @@ from kink import inject
 
 from ..domain.transaction import Transaction, TransactionType
 from ..domain.repositories import TransactionRepository
-from ..infrastructure.messaging.kafka_service import KafkaService
+from ..producers.kafka_producer import KafkaProducer
 
 @inject
 class ExecuteTransaction:
     def __init__(
         self,
         transaction_repo: TransactionRepository,
-        kafka_service: KafkaService
+        kafka_producer: KafkaProducer
     ):
         self._transaction_repo = transaction_repo
-        self._kafka_service = kafka_service
+        self._kafka_producer = kafka_producer
 
     async def execute(
         self,
@@ -38,7 +38,7 @@ class ExecuteTransaction:
         transaction = await self._transaction_repo.save(transaction)
         
         # Send message to Kafka
-        await self._kafka_service.send_message(
+        await self._kafka_producer.send_message(
             "transactions",
             {
                 "transaction_id": str(transaction.id),

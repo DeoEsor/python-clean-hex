@@ -41,7 +41,15 @@ pip install -r requirements.txt
 createdb stock_service
 ```
 
-5. Start Kafka:
+5. Configure environment variables:
+```bash
+# Copy example .env file
+cp .env.example .env
+
+# Edit .env file with your settings
+```
+
+6. Start Kafka:
 ```bash
 # Start Zookeeper
 zookeeper-server-start /usr/local/etc/kafka/zookeeper.properties
@@ -50,7 +58,7 @@ zookeeper-server-start /usr/local/etc/kafka/zookeeper.properties
 kafka-server-start /usr/local/etc/kafka/server.properties
 ```
 
-6. Start Temporal:
+7. Start Temporal:
 ```bash
 temporal server start-dev
 ```
@@ -71,6 +79,26 @@ python -m src.entrypoints.consumer
 ```bash
 python -m src.entrypoints.workflow
 ```
+
+## Configuration
+
+The service is configured using environment variables. You can set them in the `.env` file:
+
+### Database
+- `DB_HOST`: PostgreSQL host (default: localhost)
+- `DB_PORT`: PostgreSQL port (default: 5432)
+- `DB_NAME`: Database name (default: stock_service)
+- `DB_USER`: Database user (default: postgres)
+- `DB_PASSWORD`: Database password (default: postgres)
+
+### Kafka
+- `KAFKA_BOOTSTRAP_SERVERS`: Kafka bootstrap servers (default: localhost:9092)
+- `KAFKA_CONSUMER_GROUP`: Consumer group ID (default: stock_service)
+- `KAFKA_TRANSACTIONS_TOPIC`: Topic for transaction messages (default: transactions)
+
+### Temporal
+- `TEMPORAL_HOST`: Temporal server host (default: localhost:7233)
+- `TEMPORAL_TASK_QUEUE`: Task queue name (default: transactions)
 
 ## API Documentation
 
